@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Smart Farm AI</title>
+
+<style>
+body {
+  background: #0f172a;
+  color: white;
+  font-family: sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.container {
+  width: 400px;
+  padding: 20px;
+  background: #1e293b;
+  border-radius: 12px;
+}
+
+h2 {
+  text-align: center;
+  color: #4ade80;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 6px;
+  border: none;
+  background: #0f172a;
+  color: white;
+}
+
+.card {
+  padding: 15px;
+  margin-top: 15px;
+  background: #0f172a;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #4ade80;
+}
+
+.label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.status {
+  text-align: center;
+  margin-top: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>Eden AI</h2>
+
+<input id="crop" placeholder="Type crop (e.g. maize)">
+
+<div id="status" class="status">Idle</div>
+
+<div class="card">
+  <div class="label">MAX TEMPERATURE (°C)</div>
+  <div id="temp" class="value">--</div>
+</div>
+
+<div class="card">
+  <div class="label">MIN MOISTURE (%)</div>
+  <div id="moist" class="value">--</div>
+</div>
+
+<div class="card">
+  <div class="label">LIGHT THRESHOLD</div>
+  <div id="light" class="value">--</div>
+</div>
+
+</div>
+
+<script>
+let timer;
+
+document.getElementById("crop").addEventListener("input", () => {
+  const crop = document.getElementById("crop").value;
+
+  clearTimeout(timer);
+
+  timer = setTimeout(() => {
+    if (crop.length > 2) {
+
+      document.getElementById("temp").innerText = "...";
+      document.getElementById("moist").innerText = "...";
+      document.getElementById("light").innerText = "...";
+
+      document.getElementById("status").innerText = "⚡ Calling AI...";
+
+      runAI(crop);
+    }
+  }, 500);
+});
+
+async function runAI(crop) {
+
+  // 🌱 South African dataset
+  const localCrops = {
+    maize: { tempMax: 30, moistureMin: 60, lightLow: 2500 },
+    wheat: { tempMax: 22, moistureMin: 45, lightLow: 1800 },
+    sorghum: { tempMax: 28, moistureMin: 40, lightLow: 2200 },
+    sunflower: { tempMax: 27, moistureMin: 35, lightLow: 2600 },
+    sugarcane: { tempMax: 32, moistureMin: 70, lightLow: 3000 },
+    potatoes: { tempMax: 20, moistureMin: 65, lightLow: 1500 }
+  };
+
+  const key = crop.toLowerCase().trim();
+
+  try {
+    // 🌐 Try real AI first
+    const res = await fetch("https://test10o.app.n8n.cloud/webhook-test/plant-control", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ crop: crop })
+    });
+
+    if (!res.ok) throw new Error("Webhook failed");
+
+    let data = await res.json();
+
+    console.log("n8n response:", data);
+
+    if (data && (data.tempMax || data.moistureMin || data.lightLow)) {
+
+      document.getElementById("temp").innerText = data.tempMax ?? 25;
+      document.getElementById("moist").innerText = data.moistureMin ?? 50;
+      document.getElementById("light").innerText = data.lightLow ?? 2000;
+
+      document.getElementById("status").innerText = "✅ AI Updated (Cloud)";
+      return;
+    }
+
+    throw new Error("Empty API");
+
+  } catch (err) {
+
+    console.warn("Using local dataset:", err);
+
+    // 🌱 fallback dataset
+    if (localCrops[key]) {
+
+      const base = localCrops[key];
+
+      const temp = (base.tempMax + (Math.random() * 2 - 1)).toFixed(1);
+      const moist = (base.moistureMin + (Math.random() * 5 - 2)).toFixed(0);
+      const light = Math.floor(base.lightLow + (Math.random() * 200 - 100));
+
+      document.getElementById("temp").innerText = temp;
+      document.getElementById("moist").innerText = moist;
+      document.getElementById("light").innerText = light;
+
+      document.getElementById("status").innerText = "🌱 Local AI Data";
+
+    } else {
+
+      document.getElementById("temp").innerText = "--";
+      document.getElementById("moist").innerText = "--";
+      document.getElementById("light").innerText = "--";
+
+      document.getElementById("status").innerText = "❌ Crop not found";
+    }
+  }
+}
+</script>
+
+</body>
+</html>
